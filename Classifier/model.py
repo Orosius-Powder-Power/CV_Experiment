@@ -6,7 +6,7 @@ class CLIPClassifier(nn.Module):
         super(CLIPClassifier, self).__init__()
         # 加载预训练的CLIP Vision Tower
         self.backbone = CLIPVisionModel.from_pretrained(model_name)
-        
+
         # 获取输出维度 (ViT-Large通常是1024, Base是768)
         self.hidden_size = self.backbone.config.hidden_size
         
@@ -17,8 +17,8 @@ class CLIPClassifier(nn.Module):
         )
         
         # 显式初始化分类头
-        nn.init.xavier_uniform_(self.classifier.weight)
-        nn.init.zeros_(self.classifier.bias)
+        nn.init.xavier_uniform_(self.classifier[1].weight)
+        nn.init.zeros_(self.classifier[1].bias)
 
     def forward(self, x):
         # CLIP Vision Model 输出是一个对象，pooler_output 对应 [CLS] token
