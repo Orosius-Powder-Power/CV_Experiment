@@ -6,18 +6,46 @@ from torchvision import datasets, transforms
 from transformers import CLIPImageProcessor
 from tqdm import tqdm
 import os
+import argparse
 
 from config import Config
 from model import CLIPClassifier
 from utils import setup_logger, plot_training_results
 
+def parse_args():
+    """解析命令行参数"""
+    parser = argparse.ArgumentParser(description='CIFAR-10 CLIP Fine-tuning')
+    parser.add_argument('--device', type=str, default=None,
+                        help='Device to use (e.g., cpu, cuda, cuda:0). If not specified, uses config default.')
+    parser.add_argument('--batch_size', type=int, default=None,
+                        help='Batch size for training. If not specified, uses config default.')
+    parser.add_argument('--epochs', type=int, default=None,
+                        help='Number of training epochs. If not specified, uses config default.')
+    return parser.parse_args()
+
+#HF_ENDPOINT=https://hf-mirror.com nohup python main.py --device cuda:3 > run.log 2>&1 &
+
 def main():
+    # 解析命令行参数
+    args = parse_args()
+    
     # 1. 初始化配置和日志
     cfg = Config()
+    
+    # 覆盖配置中的参数（如果命令行提供了）
+    if args.device is not None:
+        cfg.device = args.device
+    if args.batch_size is not None:
+        cfg.batch_size = args.batch_size
+    if args.epochs is not None:
+        cfg.epochs = args.epochs
+    
     logger = setup_logger(cfg.log_dir, cfg.log_file)
     logger.info(f"Project: {cfg.project_name}")
     logger.info(f"Using Device: {cfg.device}")
     logger.info(f"Model: {cfg.model_name}")
+    logger.info(f"Batch Size: {cfg.batch_size}")
+    logger.info(f"Epochs: {cfg.epochs}")
 
     # 2. 数据预处理
     # CLIP ViT需要特定的Normalization和Resize (224x224)
