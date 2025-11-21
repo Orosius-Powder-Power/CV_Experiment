@@ -1,0 +1,24 @@
+2025-11-20 23:44:17,136 - Project: CIFAR10_CLIP_FineTune
+2025-11-20 23:44:17,136 - Using Device: cuda:3
+2025-11-20 23:44:17,136 - Model: openai/clip-vit-large-patch14
+2025-11-20 23:44:17,136 - Batch Size: 64
+2025-11-20 23:44:17,136 - Epochs: 10
+2025-11-20 23:44:18,659 - Loading CIFAR-10 dataset...
+2025-11-20 23:44:26,718 - ============== Starting Training ==============
+2025-11-21 00:13:13,489 - Epoch: 1, Loss: 0.1066, Train Acc: 96.91%, Test Acc: 98.28%
+2025-11-21 00:13:15,020 - New best model saved with accuracy: 98.28%
+2025-11-21 00:42:11,948 - Epoch: 2, Loss: 0.0296, Train Acc: 99.09%, Test Acc: 98.53%
+2025-11-21 00:42:19,133 - New best model saved with accuracy: 98.53%
+2025-11-21 01:11:05,293 - Epoch: 3, Loss: 0.0185, Train Acc: 99.42%, Test Acc: 98.66%
+2025-11-21 01:11:12,473 - New best model saved with accuracy: 98.66%
+2025-11-21 01:39:56,110 - Epoch: 4, Loss: 0.0114, Train Acc: 99.66%, Test Acc: 98.01%
+2025-11-21 02:08:37,016 - Epoch: 5, Loss: 0.0110, Train Acc: 99.69%, Test Acc: 98.65%
+2025-11-21 02:37:17,628 - Epoch: 6, Loss: 0.0045, Train Acc: 99.87%, Test Acc: 98.65%
+2025-11-21 03:05:56,918 - Epoch: 7, Loss: 0.0028, Train Acc: 99.90%, Test Acc: 98.92%
+2025-11-21 03:06:03,973 - New best model saved with accuracy: 98.92%
+2025-11-21 03:34:43,280 - Epoch: 8, Loss: 0.0008, Train Acc: 99.97%, Test Acc: 99.10%
+2025-11-21 03:34:50,377 - New best model saved with accuracy: 99.10%
+2025-11-21 04:03:29,532 - Epoch: 9, Loss: 0.0003, Train Acc: 99.99%, Test Acc: 99.16%
+2025-11-21 04:03:36,591 - New best model saved with accuracy: 99.16%
+2025-11-21 04:32:16,129 - Epoch: 10, Loss: 0.0002, Train Acc: 100.00%, Test Acc: 99.16%
+2025-11-21 04:32:16,129 - Final Best Test Accuracy: 99.16%
