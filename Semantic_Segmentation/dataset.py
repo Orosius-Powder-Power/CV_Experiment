@@ -33,8 +33,17 @@ class VOCDataset(VOCSegmentation):
 def get_transforms(cfg):
     # 强力数据增强
     train_transform = A.Compose([
-        A.LongestMaxSize(max_size=cfg.crop_size + 100), # 先放大一点
-        A.RandomCrop(width=cfg.crop_size, height=cfg.crop_size), # 再随机裁剪
+        # 1. 先把短边缩放到至少 512，确保图片够大
+        A.SmallestMaxSize(max_size=cfg.crop_size, always_apply=True),
+        
+        # 2. 如果长宽还有一边小于 512 (极少数情况)，用 Pad 补齐
+        # value=0 (黑色填充), mask_value=255 (忽略标签填充)
+        A.PadIfNeeded(min_height=cfg.crop_size, min_width=cfg.crop_size, 
+                      border_mode=0, value=0, mask_value=255, always_apply=True),
+        
+        # 3. 现在图片肯定 >= 512x512 了，可以放心裁切（随机裁剪）
+        A.RandomCrop(width=cfg.crop_size, height=cfg.crop_size, always_apply=True),
+        
         A.HorizontalFlip(p=0.5),
         A.RandomBrightnessContrast(p=0.2),
         A.ShiftScaleRotate(scale_limit=0.1, rotate_limit=10, p=0.5),
@@ -44,9 +53,11 @@ def get_transforms(cfg):
 
     # 验证集只做 Resize/CenterCrop 和 归一化
     val_transform = A.Compose([
-        A.LongestMaxSize(max_size=cfg.crop_size),
-        A.PadIfNeeded(min_height=cfg.crop_size, min_width=cfg.crop_size, border_mode=0, value=0, mask_value=255),
-        A.CenterCrop(width=cfg.crop_size, height=cfg.crop_size),
+        # 验证集也做同样的尺寸保证
+        A.SmallestMaxSize(max_size=cfg.crop_size, always_apply=True),
+        A.PadIfNeeded(min_height=cfg.crop_size, min_width=cfg.crop_size, 
+                      border_mode=0, value=0, mask_value=255, always_apply=True),
+        A.CenterCrop(width=cfg.crop_size, height=cfg.crop_size, always_apply=True),
         A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
         ToTensorV2(),
     ])
