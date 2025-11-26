@@ -123,7 +123,7 @@ def main():
         
         if avg_val_dice > best_dice:
             best_dice = avg_val_dice
-            torch.save(model.state_dict(), os.path.join(cfg.save_dir, "best_model.pth"))
+            # torch.save(model.state_dict(), os.path.join(cfg.save_dir, "best_model.pth"))
             print(f"New Best Dice: {best_dice:.4f} (Saved)")
             
             # 可视化当前最好的结果
