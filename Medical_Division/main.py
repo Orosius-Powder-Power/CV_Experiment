@@ -16,6 +16,7 @@ def main():
     os.makedirs(cfg.save_dir, exist_ok=True)
     
     # 1. 数据准备
+    # 数据预处理创新：Baseline只用了简单的翻转和裁剪 。我们要用 albumentations 加入弹性形变 (Elastic Transform)，这是医学图像分割的大杀器。
     train_tf, val_tf = get_transforms(cfg)
     full_dataset = ISBIDataset(cfg.train_img_path, cfg.train_mask_path, transform=train_tf)
     
@@ -46,7 +47,9 @@ def main():
     model.to(cfg.device)
     
     # 3. 损失函数和优化器
-    # 使用 DiceLoss + BCELoss 的组合，这是分割任务的标准 SOTA Loss
+    # 创新点：使用 DiceLoss + BCELoss 的组合，这是分割任务的标准 SOTA Loss
+    # BCELoss就是标准的交叉熵损失，DiceLoss使模型推断的主要部分与实际的交集更大
+    # 作用: 解决正负样本不平衡。医学图像里，背景（黑色）通常很大，病灶/组织（白色）很小。如果只用 BCE，模型只要把所有像素都预测成黑色，准确率也能很高，但 DiceLoss 强迫模型必须让“交集”变大，必须预测准那个小白点。
     loss_fn = smp.losses.DiceLoss(smp.losses.BINARY_MODE, from_logits=True)
     optimizer = optim.AdamW(model.parameters(), lr=cfg.learning_rate)
     scheduler = optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=10, T_mult=2)
