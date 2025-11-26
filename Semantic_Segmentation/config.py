@@ -23,7 +23,7 @@ class Config:
     batch_size = 16
     num_workers = 4
     learning_rate = 1e-4 # 微调学习率
-    epochs = 50
+    epochs = 200
     
     # 数据增强参数
     crop_size = 512 # 标准 VOC 输入尺寸
