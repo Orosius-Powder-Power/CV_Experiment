@@ -48,16 +48,25 @@ class ISBIDataset(Dataset):
                 image = augmented['image']
             return image
 
+
 #这里是提分的关键。Baseline只用了简单的翻转和裁剪 。我们要用 albumentations 加入弹性形变 (Elastic Transform)，这是医学图像分割的大杀器。
 def get_transforms(cfg):
-    # 强力数据增强：这是打败 Baseline 的关键
     train_transform = A.Compose([
         A.Resize(cfg.img_size, cfg.img_size),
         A.HorizontalFlip(p=0.5),
         A.VerticalFlip(p=0.5),
         A.RandomRotate90(p=0.5),
+        
         # 弹性形变，模拟生物组织的形变
+        # 新版 albumentations 将 alpha, sigma 整合进了参数列表，或者移除了 alpha_affine
         A.ElasticTransform(p=0.5, alpha=120, sigma=120 * 0.05, alpha_affine=120 * 0.03),
+        
+        # 增加 GridDistortion (网格畸变)，这也是医学图像常用的
+        A.GridDistortion(p=0.5),
+        
+        # 增加 OpticalDistortion (光学畸变)
+        A.OpticalDistortion(distort_limit=1, shift_limit=0.5, p=0.5),
+        
         # 随机亮度对比度
         A.RandomBrightnessContrast(p=0.5),
         ToTensorV2(),

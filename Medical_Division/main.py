@@ -11,6 +11,30 @@ from config import Config
 from dataset import ISBIDataset, get_transforms
 from utils import dice_coef, plot_results
 
+# 创新点4：预测时，把图分别水平翻转、垂直翻转、分别预测一次，然后把 3 次的结果取平均。这能极大提升稳定性。
+def predict_with_tta(model, img):
+    """
+    手动实现 TTA: 原图 + 水平翻转 + 垂直翻转
+    """
+    # 1. 原图预测
+    logits = model(img)
+    preds = torch.sigmoid(logits)
+    
+    # 2. 水平翻转预测
+    img_h = torch.flip(img, dims=[3])
+    logits_h = model(img_h)
+    preds_h = torch.sigmoid(logits_h)
+    preds_h = torch.flip(preds_h, dims=[3]) # 翻转回来
+    
+    # 3. 垂直翻转预测
+    img_v = torch.flip(img, dims=[2])
+    logits_v = model(img_v)
+    preds_v = torch.sigmoid(logits_v)
+    preds_v = torch.flip(preds_v, dims=[2]) # 翻转回来
+    
+    # 平均
+    return (preds + preds_h + preds_v) / 3.0
+
 def main():
     cfg = Config()
     os.makedirs(cfg.save_dir, exist_ok=True)
@@ -82,9 +106,13 @@ def main():
         with torch.no_grad():
             for imgs, masks in val_loader:
                 imgs, masks = imgs.to(cfg.device), masks.to(cfg.device)
-                logits = model(imgs)
+                
                 # 转为概率
-                preds = torch.sigmoid(logits)
+                # logits = model(imgs)
+                # preds = torch.sigmoid(logits)
+
+                # 使用 TTA 替代直接预测
+                preds = predict_with_tta(model, imgs)
                 # 二值化 [cite: 950]
                 preds = (preds > 0.5).float()
                 
