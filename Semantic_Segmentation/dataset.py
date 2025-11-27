@@ -31,32 +31,31 @@ class VOCDataset(VOCSegmentation):
         return img_tensor, target_tensor.long()
 
 def get_transforms(cfg):
-    # 强力数据增强
     train_transform = A.Compose([
-        # 1. 先把短边缩放到至少 512，确保图片够大
+        # === SOTA 升级 2: 多尺度训练 ===
+        # 在裁剪前，先随机缩放图片 (0.5 到 2.0 倍之间)
+        A.ShiftScaleRotate(scale_limit=0.5, rotate_limit=10, shift_limit=0.1, p=0.5, border_mode=0),
+        
+        # 保证尺寸
         A.SmallestMaxSize(max_size=cfg.crop_size, always_apply=True),
+        A.PadIfNeeded(min_height=cfg.crop_size, min_width=cfg.crop_size, border_mode=0, value=0, mask_value=255, always_apply=True),
         
-        # 2. 如果长宽还有一边小于 512 (极少数情况)，用 Pad 补齐
-        # value=0 (黑色填充), mask_value=255 (忽略标签填充)
-        A.PadIfNeeded(min_height=cfg.crop_size, min_width=cfg.crop_size, 
-                      border_mode=0, value=0, mask_value=255, always_apply=True),
-        
-        # 3. 现在图片肯定 >= 512x512 了，可以放心裁切（随机裁剪）
+        # 随机裁剪
         A.RandomCrop(width=cfg.crop_size, height=cfg.crop_size, always_apply=True),
         
+        # 强力增强
         A.HorizontalFlip(p=0.5),
-        A.RandomBrightnessContrast(p=0.2),
-        A.ShiftScaleRotate(scale_limit=0.1, rotate_limit=10, p=0.5),
+        A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.2, p=0.5),
+        A.HueSaturationValue(p=0.3), # 增加颜色抖动
+        A.CoarseDropout(max_holes=8, max_height=32, max_width=32, p=0.3), # 模拟遮挡 (CutOut)
+        
         A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
         ToTensorV2(),
     ])
 
-    # 验证集只做 Resize/CenterCrop 和 归一化
     val_transform = A.Compose([
-        # 验证集也做同样的尺寸保证
         A.SmallestMaxSize(max_size=cfg.crop_size, always_apply=True),
-        A.PadIfNeeded(min_height=cfg.crop_size, min_width=cfg.crop_size, 
-                      border_mode=0, value=0, mask_value=255, always_apply=True),
+        A.PadIfNeeded(min_height=cfg.crop_size, min_width=cfg.crop_size, border_mode=0, value=0, mask_value=255, always_apply=True),
         A.CenterCrop(width=cfg.crop_size, height=cfg.crop_size, always_apply=True),
         A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
         ToTensorV2(),

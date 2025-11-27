@@ -8,6 +8,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
+import torch.nn.functional as F
 
 from config import Config
 from dataset import VOCDataset, get_transforms
@@ -54,22 +55,47 @@ def poly_lr_scheduler(optimizer, init_lr, iter, max_iter, power=0.9):
 
 def predict_with_tta(model, imgs):
     """
-    独立封装的 TTA (Test Time Augmentation) 函数
-    策略：原图预测 + 水平翻转预测，结果取平均
+    SOTA 级 TTA: 多尺度 + 翻转 (Multi-Scale Flip Inference)
+    Scales: [0.75, 1.0, 1.25]
     """
-    # 1. 原图预测
-    logits = model(imgs)
-    probs = torch.softmax(logits, dim=1)
+    scales = [0.75, 1.0, 1.25] # 经典的 3 尺度
+    b, c, h, w = imgs.shape
+    final_probs = torch.zeros((b, 21, h, w), device=imgs.device)
     
-    # 2. 水平翻转预测
-    imgs_flip = torch.flip(imgs, dims=[3])
-    logits_flip = model(imgs_flip)
-    probs_flip = torch.softmax(logits_flip, dim=1)
-    probs_flip = torch.flip(probs_flip, dims=[3]) # 翻转回来
-    
-    # 3. 结果融合
-    avg_probs = (probs + probs_flip) / 2.0
-    return avg_probs
+    for scale in scales:
+        # 1. 缩放输入
+        if scale != 1.0:
+            new_h, new_w = int(h * scale), int(w * scale)
+            # 确保尺寸可以被 16 整除 (DeepLab 要求)
+            new_h = ((new_h - 1) // 16 + 1) * 16
+            new_w = ((new_w - 1) // 16 + 1) * 16
+            input_tensor = F.interpolate(imgs, size=(new_h, new_w), mode='bilinear', align_corners=True)
+        else:
+            input_tensor = imgs
+            
+        # 2. 预测 (原图)
+        logits = model(input_tensor)
+        probs = torch.softmax(logits, dim=1)
+        
+        # 3. 预测 (水平翻转)
+        input_flip = torch.flip(input_tensor, dims=[3])
+        logits_flip = model(input_flip)
+        probs_flip = torch.softmax(logits_flip, dim=1)
+        probs_flip = torch.flip(probs_flip, dims=[3])
+        
+        # 融合当前尺度的结果
+        current_scale_probs = (probs + probs_flip) / 2.0
+        
+        # 4. 还原尺寸 (如果是缩放过的)
+        if scale != 1.0:
+            current_scale_probs = F.interpolate(current_scale_probs, size=(h, w), mode='bilinear', align_corners=True)
+            
+        final_probs += current_scale_probs
+        
+    # 取平均
+    final_probs /= len(scales)
+    return final_probs
+
 
 def get_voc_palette(num_classes=21):
     """生成 PASCAL VOC 的标准颜色表，用于可视化"""
@@ -248,16 +274,18 @@ def main():
         # 保存最佳模型并可视化
         if val_miou > best_miou:
             best_miou = val_miou
-            # torch.save(model.state_dict(), os.path.join(cfg.save_dir, "best_model.pth"))
+
             print(f"炼丹ing~ New Best mIoU: {best_miou:.2f}% (Saved)")
             
-            # 生成效果图
-            visualize_results(model, val_loader, cfg.device, cfg.save_dir, epoch)
+            if epoch > 100 or val_miou > 75.0:
+                # 生成效果图
+                torch.save(model.state_dict(), os.path.join(cfg.save_dir, "best_model.pth"))
+                visualize_results(model, val_loader, cfg.device, cfg.save_dir, epoch)
             
         # 每个 epoch 结束都更新曲线图
         plot_history(history_loss, history_miou, cfg.save_dir)
-        torch.save(model.state_dict(), os.path.join(cfg.save_dir, "last_model.pth"))
 
+    torch.save(model.state_dict(), os.path.join(cfg.save_dir, "last_model.pth"))
     print(f"Final Best mIoU: {best_miou:.2f}%")
 
 if __name__ == "__main__":
